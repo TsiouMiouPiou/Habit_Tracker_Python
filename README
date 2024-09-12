@@ -10,12 +10,16 @@ To test the project, run the following command in the terminal:
 
 ## Copy code
 
-`pytest test_habit_tracker.py`
+```bash
+pytest test_habit_tracker.py
+```
 
 To interact with the project and see its functionality (adding, saving, deleting, and checking habits), run:
 
 ## Copy code
 
-`python save.py`
+```bash
+python save.py
+```
 
 This provides a clear guide on how to test and run the project. You can modify it further if necessary.
