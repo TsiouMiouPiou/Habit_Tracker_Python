@@ -1,11 +1,24 @@
 from datetime import datetime, timedelta
 import json
 from tabulate import tabulate
+import questionary
+import os
 
 class HabitTracker:
 
-    def __init__(self):
-        pass
+    def __init__(self, file_path):
+        self.file_path = file_path
+        self.habitDictionary = self.loadHabits()
+
+    def loadHabits(self):
+        try:
+            if not os.path.exists(self.file_path) or os.path.getsize(self.file_path) == 0:
+                return {}
+            else:
+                with open(self.file_path, "r") as infile:
+                    return json.load(infile)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {}  # Initialize an empty dictionary if the file is missing or malformed
 
     def start(self):
         self.selection()
@@ -58,30 +71,22 @@ class HabitTracker:
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
 
-        # Remove this line or check if it's a test environment
-        if not pytest_running():
-            self.selection()
+        
 
     # 2 ADD A NEW HABIT
     def addHabit(self):
-        try:
-            with open("habits.json", "r") as infile:
-                habitDictionary = json.load(infile)
-        except (FileNotFoundError, json.JSONDecodeError):
-            habitDictionary = {}
+        fully_defined = False
 
-        while True:
-            habit = input("Add a habit or type 'exit' to Main Menu: ")
+        while not fully_defined:
+            habit = questionary.text("Add a habit or type 'exit' to Main Menu: ").ask()
             if habit.lower() == "exit":
-                self.selection()
+                return  # Exit the method
 
-            # Loop until the user selects either 'daily' or 'weekly'
-            while True:
-                goal = input("Select your goal: (daily/weekly): ").strip().lower()
-                if goal in ["daily", "weekly"]:
-                    break  # Exit the loop if the goal is valid
-                else:
-                    print("Invalid goal. Please choose either 'daily' or 'weekly'.")
+            # Ask for the goal using questionary
+            goal = questionary.select(
+                "Select your goal:",
+                choices=["daily", "weekly"]
+            ).ask()
 
             # Generate tracking data for 4 weeks, starting 4 weeks ago
             start_date = datetime.now()
@@ -92,66 +97,45 @@ class HabitTracker:
             for i in range(28):
                 current_date = weeks_ago + timedelta(days=i)
                 date_str = current_date.strftime("%d-%m-%Y")
-                if current_date < start_date:
-                    completion[date_str] = "-"  # Default value for past days
-                else:
-                    completion[date_str] = ""  # Future dates remain empty
+                completion[date_str] = "-"
 
-            # Make sure the creation date is explicitly marked
-            creation_date_str = start_date.strftime("%d-%m-%Y")
-            completion[creation_date_str] = "Created"  # This marks the habit's creation date
+            # Mark the creation date
+            creation_date_str = start_date.strftime("%d-%m-%Y %H:%M:%S")
 
             # Handle daily goal
             if goal == "daily":
-                time = int(input("Enter time per day in minutes: "))
-                habitDictionary[habit] = {
+                time = questionary.text("Enter time per day in minutes: ", validate=lambda text: text.isdigit()).ask()
+                self.habitDictionary[habit] = {
                     "goal": "daily",
-                    "time": time,
-                    "frequency": goal.capitalize(),
-                    "created": start_date.strftime("%d-%m-%Y %H:%M:%S"),
+                    "time": int(time),
+                    "frequency": "Daily",
+                    "created": creation_date_str,
                     "completion": completion
                 }
+                fully_defined = True  # Exit the loop once the habit is defined correctly
 
             # Handle weekly goal
             elif goal == "weekly":
-                time = int(input("Enter time per day in minutes: "))
-                while True:
-                    times_per_week = int(input("How many times per week do you want to do this habit? (1-7): "))
-                    if 1 <= times_per_week <= 7:
-                        break  # Valid input, exit loop
-                    else:
-                        print("Invalid input. Please enter a number between 1 and 7.")
-
-                habitDictionary[habit] = {
+                time = questionary.text("Enter time per day in minutes: ", validate=lambda text: text.isdigit()).ask()
+                times_per_week = questionary.text(
+                    "How many times per week do you want to do this habit? (1-7): ",
+                    validate=lambda text: text.isdigit() and 1 <= int(text) <= 7
+                ).ask()
+                self.habitDictionary[habit] = {
                     "goal": f"{times_per_week} times per week",
-                    "time": time,
-                    "frequency": goal.capitalize(),
-                    "created": start_date.strftime("%d-%m-%Y %H:%M:%S"),
+                    "time": int(time),
+                    "frequency": "Weekly",
+                    "created": creation_date_str,
                     "completion": completion
                 }
+                fully_defined = True  # Exit the loop once the habit is defined correctly
 
-            # Save the habit to the JSON file
-            with open("habits.json", "w") as outfile:
-                json.dump(habitDictionary, outfile, indent=4)
-            print(f"Habit '{habit}' added")
-
-    # 3 REMOVE A HABIT
-    def removeHabit(self, habitName):
         try:
-            with open("habits.json", "r") as infile:
-                habitDictionary = json.load(infile)
-        except (FileNotFoundError, json.JSONDecodeError):
-            habitDictionary = {}
-
-        if habitName in habitDictionary:
-            habitDictionary.pop(habitName)
-            print(f"Habit '{habitName}' removed")
-        else:
-            print(f"Habit '{habitName}' not found")
-
-        with open("habits.json", "w") as writeFile:
-            json.dump(habitDictionary, writeFile)
-
+            with open(self.file_path, "w") as outfile:
+                json.dump(self.habitDictionary, outfile, indent=4)
+            print(f"Habit '{habit}' added")
+        except IOError as e:
+            print(f"Error writing to file: {e}")
     # 4 COMPLETION
     def checkHabit(self):
         try:
@@ -334,40 +318,49 @@ class HabitTracker:
 
 
     # Main menu logic
+
     def selection(self):
       try:
-            case = int(input("""
-                  ---Main Menu---
-                  1. View all Habits 
-                  2. Add a new Habit
-                  3. Delete a Habit
-                  4. Check a Habit
-                  5. Return a periodicity list
-                  6. Get the longest streak
-                  7. Get all streaks
-                  \n"""))
-            if case == 1:
+            case = questionary.select(
+                  "---Main Menu---",
+                  choices=[
+                  "1. View all Habits",
+                  "2. Add a new Habit",
+                  "3. Delete a Habit",
+                  "4. Check a Habit",
+                  "5. Return a periodicity list",
+                  "6. Get the longest streak",
+                  "7. Get all streaks",
+                  ]).ask()
+
+            if case == "1. View all Habits":
                   self.displayHabit()
-            elif case == 2:
+            elif case == "2. Add a new Habit":
                   self.addHabit()
-            elif case == 3:
+            elif case == "3. Delete a Habit":
                   while True:
-                        habitToRemove = input("Enter the name of the habit to remove or type 'exit' to Main Menu: ").strip()
+                        habitToRemove = questionary.text("Enter the name of the habit to remove or type 'exit' to Main Menu:").ask().strip()
                         if habitToRemove.lower() == "exit":
                               self.selection()
+                              break
                         else:
-                              self.removeHabit(habitToRemove)
-            elif case == 4:
+                         self.removeHabit(habitToRemove)
+            elif case == "4. Check a Habit":
                   self.checkHabit()
-            elif case == 5:
+            elif case == "5. Return a periodicity list":
                   self.find_habit_by_periodicity()
-            elif case == 6:
+            elif case == "6. Get the longest streak":
                   self.get_longest_streak()
-            elif case == 7:
+            elif case == "7. Get all streaks":
                   self.get_longest_streak_of_all_habits()
       except ValueError:
-            print("Enter a valid number")
+            print("Enter a valid option")
             self.selection()
+
+if __name__ == "__main__":
+    file_path = "habits.json"  # Specify the path to your habits file
+    tracker = HabitTracker(file_path)
+    tracker.selection()  # Or whatever method you want to call on the tracker
 
 # Utility function to check if pytest is running
 def pytest_running():
