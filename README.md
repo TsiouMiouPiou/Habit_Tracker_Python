@@ -2,8 +2,9 @@
 
 This project is a Python-based habit tracker that allows users to add, save, delete, and check habits, as well as display the longest streak of each habit. The program uses a JSON file to store habit data, making it easy to track and review progress over time.
 
-U+1F4C3
-* Files:
+
+
+* 📃 Files 📃
 **habit_tracker.py**: Contains the main habit tracker logic. Run this file to interact with the habit tracker through a menu with seven options, which include adding, viewing, and managing your habits.
 
 **test_habit_tracker.py**: Unit tests for the habit tracker functions to ensure that each component is working as expected.
