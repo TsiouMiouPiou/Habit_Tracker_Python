@@ -1,26 +1,8 @@
 # Habit Tracker
 
-This project is a Python-based habit tracker that allows users to add, save, delete, check habits but also display the longest streak of each habit
-
-Files:
-**habit_tracker.py**: Contains the main habit tracker logic.
-Run the file and select one of the 7 options to interact and 
-see its functionality
-
-
-**test_habit_tracker**.py: Unit tests for the project.
-How to Run:
-To test the project, run the following command in the terminal:
-
-```bash
-pytest test_habit_tracker.py
-```
-
-
-# Habit Tracker
-
 This project is a Python-based habit tracker that allows users to add, save, delete, and check habits, as well as display the longest streak of each habit. The program uses a JSON file to store habit data, making it easy to track and review progress over time.
 
+U+1F4C3
 * Files:
 **habit_tracker.py**: Contains the main habit tracker logic. Run this file to interact with the habit tracker through a menu with seven options, which include adding, viewing, and managing your habits.
 
