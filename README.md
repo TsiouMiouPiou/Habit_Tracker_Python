@@ -4,11 +4,13 @@ This project is a Python-based habit tracker that allows users to add, save, del
 
 
 
-* 📃 Files 📃
+* Files 📃  
 **habit_tracker.py**: Contains the main habit tracker logic. Run this file to interact with the habit tracker through a menu with seven options, which include adding, viewing, and managing your habits.
 
-**test_habit_tracker.py**: Unit tests for the habit tracker functions to ensure that each component is working as expected.
-Requirements
+**test_habit_tracker.py**   
+Unit tests for the habit tracker functions to ensure that each component is working as expected.  
+
+* Requirements
 To ensure that all dependencies are met, please install the following Python packages if they are not already installed:
 
 ```bash
