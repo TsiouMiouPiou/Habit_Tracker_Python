@@ -75,34 +75,34 @@ class HabitTracker:
 
     # 2 ADD A NEW HABIT
     def addHabit(self):
+        # Load existing habits
+        try:
+            with open(self.file_path, "r") as infile:
+                self.habitDictionary = json.load(infile)
+        except (FileNotFoundError, json.JSONDecodeError):
+            self.habitDictionary = {}
+
         fully_defined = False
 
         while not fully_defined:
+            # Capture habit name with validation
             habit = questionary.text("Add a habit or type 'exit' to Main Menu: ").ask()
+
             if habit.lower() == "exit":
-                return  # Exit the method
+                self.selection()  # Exit the method
 
-            # Ask for the goal using questionary
-            goal = questionary.select(
-                "Select your goal:",
-                choices=["daily", "weekly"]
-            ).ask()
+            # Validate habit name
+            if not habit.strip() or habit.startswith("&") or "python" in habit.lower():
+                print("Invalid habit name. Please enter a descriptive name without special command-like characters.")
+                continue  # Skip the rest of the loop and prompt again
 
-            # Generate tracking data for 4 weeks, starting 4 weeks ago
+            # Proceed to gather other details if the habit name is valid
+            goal = questionary.select("Select your goal:", choices=["daily", "weekly"]).ask()
             start_date = datetime.now()
             weeks_ago = start_date - timedelta(weeks=4)
-            completion = {}
-
-            # Track days from 4 weeks ago until today
-            for i in range(28):
-                current_date = weeks_ago + timedelta(days=i)
-                date_str = current_date.strftime("%d-%m-%Y")
-                completion[date_str] = "-"
-
-            # Mark the creation date
+            completion = { (weeks_ago + timedelta(days=i)).strftime("%d-%m-%Y"): "-" for i in range(28) }
             creation_date_str = start_date.strftime("%d-%m-%Y %H:%M:%S")
 
-            # Handle daily goal
             if goal == "daily":
                 time = questionary.text("Enter time per day in minutes: ", validate=lambda text: text.isdigit()).ask()
                 self.habitDictionary[habit] = {
@@ -112,15 +112,12 @@ class HabitTracker:
                     "created": creation_date_str,
                     "completion": completion
                 }
-                fully_defined = True  # Exit the loop once the habit is defined correctly
+                fully_defined = True
 
-            # Handle weekly goal
             elif goal == "weekly":
                 time = questionary.text("Enter time per day in minutes: ", validate=lambda text: text.isdigit()).ask()
-                times_per_week = questionary.text(
-                    "How many times per week do you want to do this habit? (1-7): ",
-                    validate=lambda text: text.isdigit() and 1 <= int(text) <= 7
-                ).ask()
+                times_per_week = questionary.text("How many times per week do you want to do this habit? (1-7): ", 
+                                                validate=lambda text: text.isdigit() and 1 <= int(text) <= 7).ask()
                 self.habitDictionary[habit] = {
                     "goal": f"{times_per_week} times per week",
                     "time": int(time),
@@ -128,36 +125,68 @@ class HabitTracker:
                     "created": creation_date_str,
                     "completion": completion
                 }
-                fully_defined = True  # Exit the loop once the habit is defined correctly
+                fully_defined = True
 
+        # Save updated habits to JSON
         try:
             with open(self.file_path, "w") as outfile:
                 json.dump(self.habitDictionary, outfile, indent=4)
-            print(f"Habit '{habit}' added")
+            print(f"Habit '{habit}' added successfully.")
         except IOError as e:
             print(f"Error writing to file: {e}")
-    # 4 COMPLETION
-    def checkHabit(self):
+
+        
+       
+    #  3 Remove a habit       
+    def removeHabit(self, habitName):
         try:
             with open("habits.json", "r") as infile:
                 habitDictionary = json.load(infile)
+        except FileNotFoundError:
+            habitDictionary = {}
+        except json.JSONDecodeError:
+            habitDictionary = {}
+
+        if habitName in habitDictionary:
+            habitDictionary.pop(habitName)
+            print(f"Habit '{habitName}' removed")
+        else:
+            print(f"Habit '{habitName}' not found")
+
+        with open("habits.json", "w") as writeFile:
+            json.dump(habitDictionary, writeFile)
+
+
+    # 4 COMPLETION - Check Habit
+    def checkHabit(self):
+        try:
+         with open("habits.json", "r") as infile:
+            habitDictionary = json.load(infile)
         except (FileNotFoundError, json.JSONDecodeError):
             return
 
-        while True:
-            habitName = input("Enter the name of the habit you want to check off or press 'exit' to Main Menu: ").strip()
+        fully_defined = False  # Control variable for the loop
+
+        while not fully_defined:
+            habitName = questionary.text("Enter the name of the habit you want to check off or press 'exit' to Main Menu:").ask().strip()
+            
             if habitName.lower() == "exit":
                 self.selection()
+                fully_defined = True  # Exit the loop if user chooses to go to the main menu
 
-            if habitName in habitDictionary:
-                current_date = datetime.now().strftime("%d-%m-%Y")  # Match this with the date
-                habitDictionary[habitName]["completion"][current_date] = '✔️'  # Mark as completed
+            elif habitName in habitDictionary:
+                current_date = datetime.now().strftime("%d-%m-%Y")
+                habitDictionary[habitName]["completion"][current_date] = '✔️'
                 print(f"Habit '{habitName}' is checked off for {current_date}")
-            else:
-                print(f"Habit '{habitName}' not found.")
+                fully_defined = True  # Exit the loop after checking off a habit
 
-            with open("habits.json", "w") as writeFile:
-                json.dump(habitDictionary, writeFile, indent=4)
+            else:
+                print(f"Habit '{habitName}' not found. Please try again.")
+
+        # Write the updated habits back to the file
+        with open("habits.json", "w") as writeFile:
+            json.dump(habitDictionary, writeFile, indent=4)
+
 
     # 5 Periodicity habits
     def find_habit_by_periodicity(self):
@@ -168,20 +197,24 @@ class HabitTracker:
             print("No habits file found or error decoding JSON.")
             return
 
-        while True:
-            periodicity_list = []
+        fully_defined = False
+
+        while not fully_defined:
             user_input = input("Enter the desired periodicity ('1 - 7' for weekly / 'daily' for daily) or 'exit' to Main Menu: ")
 
             if user_input.lower() == "exit":
                 self.selection()
+                return  # Exit the function after returning to the main menu
 
-            elif user_input.lower() == "daily":
+            periodicity_list = []
+
+            if user_input.lower() == "daily":
                 for habit, details in habitDictionary.items():
                     if details["goal"] == "daily":
                         periodicity_list.append(habit)
 
             else:
-                try:
+                try: # Enter 1-7 to check which habits are included at the specific range
                     periodicity = int(user_input)
                     if 1 <= periodicity <= 7:
                         for habit, details in habitDictionary.items():
@@ -196,14 +229,19 @@ class HabitTracker:
 
             if periodicity_list:
                 print(f"Habits with {user_input} periodicity:")
-                for i in periodicity_list:
-                    print("- " + i)
+                for habit in periodicity_list:
+                    print("- " + habit)
+                fully_defined = True  # Set to True to exit the loop
             else:
                 print("No habits found with the desired periodicity.")
 
+
+
     # 6 Return streak
     def get_longest_streak(self):
-        while True:
+        fully_defined = False
+
+        while not fully_defined:
             habit_name = input("Enter the name of the habit you want to check the longest streak for or type 'exit' to Main Menu: ").strip()
 
             if habit_name.lower() == "exit":
@@ -237,84 +275,93 @@ class HabitTracker:
             max_streak = max(max_streak, streak)
 
             print(f"Longest streak for '{habit_name}' is {max_streak} days.")
+            fully_defined = True  # Set to True to exit the loop
 
 
-    def get_longest_streak_of_all_habits(self):
-            while True:
-                  try:
-                        with open("habits.json", "r") as infile:
-                              habitDictionary = json.load(infile)
-                  except FileNotFoundError:
-                        print("No habits file found")
-                        return
-                  except json.JSONDecodeError:
-                        print("Error decoding JSON.")
-                        return
+    def get_longest_streak_of_all_habits(self, testing_mode=False):
+        try:
+            with open(self.file_path, "r") as infile:
+                self.habitDictionary = json.load(infile)  # Load data into the class attribute
+        except FileNotFoundError:
+            print("No habits file found")
+            return
+        except json.JSONDecodeError:
+            print("Error decoding JSON.")
+            return
 
-                  results = []
+        results = []
 
-                  for habit_name, details in habitDictionary.items():
-                        goal = details["goal"]
-                        completion_data = details["completion"]
+        for habit_name, details in self.habitDictionary.items():  
+            goal = details["goal"]
+            completion_data = details["completion"]
 
-                        if "times per week" in goal:
-                              times_per_week = int(goal.split()[0])
-                              # Weekly habits
-                              current_streak = 0
-                              longest_streak = 0
-                              completion_dates = sorted(completion_data.keys(), key=lambda x: datetime.strptime(x, "%d-%m-%Y"))
+            if "times per week" in goal:
 
-                              week_start = datetime.strptime(completion_dates[0], "%d-%m-%Y")
-                              end_date = datetime.strptime(completion_dates[-1], "%d-%m-%Y")
+                # Extract the number of times a habit should be completed per week
+                times_per_week = int(goal.split()[0])
+                # Weekly habits
+                current_streak = 0
+                longest_streak = 0
+                completion_dates = sorted(completion_data.keys(), key=lambda x: datetime.strptime(x, "%d-%m-%Y"))
 
-                              while week_start <= end_date:
-                                    week_end = week_start + timedelta(days=6)
-                                    week_completions = 0
+                week_start = datetime.strptime(completion_dates[0], "%d-%m-%Y")
+                end_date = datetime.strptime(completion_dates[-1], "%d-%m-%Y")
 
-                                    for date_str in completion_dates:
-                                          current_date = datetime.strptime(date_str, "%d-%m-%Y")
-                                          if week_start <= current_date <= week_end and completion_data[date_str] == '✔️':
-                                                week_completions += 1
+                # Iterate over weeks, starting from 'week_start' and moving in weekly increments
+                while week_start <= end_date:
+                    # Define the end of the current week (6 days after the start of the week)
+                    week_end = week_start + timedelta(days=6)
+                    # Initialize a counter to track the number of completions within the week
+                    week_completions = 0
 
-                                    if week_completions >= times_per_week:
-                                          current_streak += 1
-                                    else:
-                                          current_streak = 0
+                     # Check each date in the list of completion dates
+                    for date_str in completion_dates:
+                        current_date = datetime.strptime(date_str, "%d-%m-%Y")
+                        if week_start <= current_date <= week_end and completion_data[date_str] == '✔️':
+                            week_completions += 1
 
-                                    longest_streak = max(longest_streak, current_streak)
-                                    week_start += timedelta(days=7)
+                     # Check if the weekly completions meet or exceed the required frequency (times_per_week)
+                    if week_completions >= times_per_week:
+                        current_streak += 1
+                    else:
+                        current_streak = 0
 
-                              results.append((habit_name, longest_streak if longest_streak > 0 else '-', 'weekly'))
+                    longest_streak = max(longest_streak, current_streak)
+                    week_start += timedelta(days=7)
 
-                        elif goal == "daily":
-                        # Daily habits
-                              completion_dates = sorted(completion_data.keys(), key=lambda x: datetime.strptime(x, "%d-%m-%Y"))
+                results.append((habit_name, longest_streak if longest_streak > 0 else '-', 'weekly'))
 
-                              current_streak = 0
-                              longest_streak = 0
+            elif goal == "daily":
+                # Daily habits
+                completion_dates = sorted(completion_data.keys(), key=lambda x: datetime.strptime(x, "%d-%m-%Y"))
 
-                              for date_str in completion_dates:
-                                    if completion_data[date_str] == '✔️':
-                                          current_streak += 1
-                                          longest_streak = max(longest_streak, current_streak)
-                                    else:
-                                          current_streak = 0
+                current_streak = 0
+                longest_streak = 0
 
-                              results.append((habit_name, longest_streak if longest_streak > 0 else '-', 'daily'))
+                for date_str in completion_dates:
+                    if completion_data[date_str] == '✔️':
+                        current_streak += 1
+                        longest_streak = max(longest_streak, current_streak)
+                    else:
+                        current_streak = 0
 
-                        else:
-                              results.append((habit_name, '-', 'unknown'))
+                results.append((habit_name, longest_streak if longest_streak > 0 else '-', 'daily'))
 
-                  # Print results
-                  print(f"{'Habit Name':<15} {'Longest Streak':<18} {'Goal Type':<10}")
-                  print("-" * 45)
-                  for habit_name, streak, goal_type in results:
-                        print(f"{habit_name:<20} {str(streak):<15} {goal_type:<10}")
+            else:
+                results.append((habit_name, '-', 'unknown'))
 
-                  # Ask user if they want to return to the main menu or stay in this function
-                  user_input = input("\nType 'exit' to return to the main menu or press Enter to check again: ").strip().lower()
-                  if user_input == 'exit':
-                        return self.selection()  # Call the main menu function
+        # Print results
+        print(f"{'Habit Name':<15} {'Longest Streak':<18} {'Goal Type':<10}")
+        print("-" * 45)
+        for habit_name, streak, goal_type in results:
+            print(f"{habit_name:<20} {str(streak):<15} {goal_type:<10}")
+
+        # Skip prompt if in testing mode
+        if not testing_mode:
+            user_input = input("\nType 'exit' to return to the main menu or press Enter to check again: ").strip().lower()
+            if user_input == 'exit':
+                return self.selection()  # Call the main menu function
+
 
 
     # Main menu logic
@@ -358,9 +405,9 @@ class HabitTracker:
             self.selection()
 
 if __name__ == "__main__":
-    file_path = "habits.json"  # Specify the path to your habits file
+    file_path = "habits.json"  # Path to habits file
     tracker = HabitTracker(file_path)
-    tracker.selection()  # Or whatever method you want to call on the tracker
+    tracker.selection()  # Call the selection() function to pop up the Main Menu
 
 # Utility function to check if pytest is running
 def pytest_running():
