@@ -21,8 +21,7 @@ pip install pytest
 
 # 🚀 How to Run 🚀
 
-Do not forget to change directory:
-cd:  
+Do not forget to change directory:  
 ```bash
 cd Habit_Tracker_Python
 ```
