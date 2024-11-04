@@ -89,7 +89,7 @@ class HabitTracker:
             habit = questionary.text("Add a habit or type 'exit' to Main Menu: ").ask()
 
             if habit.lower() == "exit":
-                self.selection()  # Exit the method
+                return  # Exit the method
 
             # Validate habit name
             if not habit.strip() or habit.startswith("&") or "python" in habit.lower():

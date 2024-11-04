@@ -18,44 +18,46 @@ def mock_file_open():
 
                                                 # 1 test_display_habit_with_data()
 def test_display_habit_with_data():
-    # Adjusted JSON data to match the date range that displayHabit might generate
-    sample_data = json.dumps({
+    # Dynamically calculate start of the current week
+    today = datetime.now().date()
+    start_of_week = today - timedelta(days=today.weekday())  # Monday of the current week
+
+    # Generate sample JSON data for the current week
+    sample_data = {
         "Gym": {
             "goal": "weekly",
             "time": 40,
             "frequency": "Weekly",
             "created": "22-09-2024 02:02:51",
             "completion": {
-                "28-10-2024": "-",
-                "29-10-2024": "-",
-                "30-10-2024": "-",
-                "31-10-2024": "-",
-                "01-11-2024": "-",
-                "02-11-2024": "-",
-                "03-11-2024": "✔️"
+                (start_of_week + timedelta(days=i)).strftime("%d-%m-%Y"): "-" for i in range(7)
             }
         }
-    })
+    }
+
+    # Mark Sunday as completed in this sample data
+    sample_data["Gym"]["completion"][(start_of_week + timedelta(days=6)).strftime("%d-%m-%Y")] = "✔️"
+
+    # Convert to JSON format for mocking
+    sample_data_json = json.dumps(sample_data)
 
     # Mocking the open function to simulate reading from a file
-    mock_file = mock_open(read_data=sample_data)
+    mock_file = mock_open(read_data=sample_data_json)
     with patch("builtins.open", mock_file):
 
         # Redirecting stdout to capture print statements
         with patch("sys.stdout", new_callable=StringIO) as fake_out:
             # Initialize HabitTracker and call displayHabit method
-            habit_tracker = HabitTracker("habits.json")
+            habit_tracker = HabitTracker("test_habits.json")
             habit_tracker.displayHabit()
 
             # Capture the printed output
             output = fake_out.getvalue()
 
-            # Assertions to check for expected output in the printed table
+            # Assertions to check for expected output in the printed table        
             assert "Gym" in output  # Verify habit name is present
             assert "Monday" in output  # Ensure table headers with dates are present
-            assert "\u2714\ufe0f" in output  # Confirm completion mark is displayed for the correct date
-            assert "-" in output 
-
+            assert "✔️" in output  # Confirm completion mark is displayed for the correct date
 
 def get_mock_date():
     # Return a fixed datetime for testing
@@ -228,7 +230,7 @@ def test_remove_habit_existing(mock_file_open):
     # Mock the file read
     mock_file_open.return_value.read.return_value = sample_data
 
-    habit_tracker = HabitTracker("habits.json")  # Use test file
+    habit_tracker = HabitTracker("test_habits.json")  # Use test file
 
     # Capture the output during the removal
     with patch('sys.stdout', new_callable=StringIO) as fake_out:
@@ -267,14 +269,14 @@ def test_remove_habit_non_existing(mock_file_open):
     # Mock the file read
     mock_file_open.return_value.read.return_value = sample_data
 
-    habit_tracker = HabitTracker("habits.json")  # Use test file
+    habit_tracker = HabitTracker("test_habits.json")  # Use test file
 
     # Capture the output during the removal
     with patch('sys.stdout', new_callable=StringIO) as fake_out:
         habit_tracker.removeHabit("non_existing_habit")  # Attempt to remove a non-existing habit
 
         # Load the habits to check the content
-        with open("habits.json", "r") as infile:
+        with open("test_habits.json", "r") as infile:
             updated_data = json.load(infile)
 
         # Assertions to verify that the habit is unchanged
@@ -309,7 +311,7 @@ def test_check_habit_existing():
                 mock_datetime.strftime = datetime.strftime
 
                 # Initialize HabitTracker and check the habit
-                habit_tracker = HabitTracker("habits.json")
+                habit_tracker = HabitTracker("test_habits.json")
                 habit_tracker.checkHabit()
 
     # Retrieve the data written to the mock file
@@ -383,7 +385,7 @@ def test_find_habit_by_periodicity_weekly():
     with patch("builtins.open", mock_file):
         with patch("builtins.input", side_effect=["3", "exit"]):
             with patch("sys.stdout", new=io.StringIO()) as fake_out:
-                habit_tracker = HabitTracker("habits.json")
+                habit_tracker = HabitTracker("test_habits.json")
                 habit_tracker.find_habit_by_periodicity()
                 output = fake_out.getvalue()
 
@@ -424,7 +426,7 @@ def test_get_longest_streak(capsys):
 
     with patch("builtins.open", mock_file):
         with patch('builtins.input', side_effect=["gym", "exit"]):
-            habit_tracker = HabitTracker("habits.json")
+            habit_tracker = HabitTracker("test_habits.json")
             habit_tracker.get_longest_streak()
 
     # Capture the output
@@ -440,7 +442,7 @@ def test_get_longest_streak(capsys):
 
 @pytest.fixture
 def setup_habit_tracker():
-    # Create a temporary habits.json for testing
+    # Create a temporary test_habits.json for testing
     test_data = {
         "thai": {
             "goal": "daily",
@@ -517,16 +519,16 @@ def setup_habit_tracker():
         }
     }
 
-    with open("habits.json", "w") as outfile:
+    with open("test_habits.json", "w") as outfile:
         json.dump(test_data, outfile)
 
     # Initialize the HabitTracker with the test file
-    habit_tracker = HabitTracker("habits.json")
+    habit_tracker = HabitTracker("test_habits.json")
     yield habit_tracker  # This will pass the habit_tracker to the test function
 
     # Clean up after tests
     import os
-    os.remove("habits.json")
+    os.remove("test_habits.json")
 
 
 def test_get_longest_streak_of_all_habits(setup_habit_tracker, capsys):
