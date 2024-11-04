@@ -12,8 +12,8 @@ This project is a Python-based habit tracker that allows users to add, save, del
 * Requirements:  
 To ensure that all dependencies are met, please install the following Python packages if they are not already installed:
 
+## Copy code
 ```bash
-Copy code
 pip install tabulate
 pip install questionary
 pip install pytest
@@ -44,5 +44,5 @@ pytest -s -v test_habit_tracker.py
 ⚠ Note 1 ⚠  
 When running the tests, you may be prompted to press Enter to continue during the execution of the last test function. This happens because the test framework waits for an input in the interactive sections of the code (such as with questionary prompts), even if the test doesn't strictly require it. To ensure the test completes successfully, simply press Enter when prompted.    
 
-⚠ Note 2 ⚠
+⚠ Note 2 ⚠  
 The displayHabit function shows only the habits for the current week. To view all recorded habits, you need to open the habits.json file directly. Checkmarks in the habits.json file are displayed in Unicode format as \u2714\ufe0f.
